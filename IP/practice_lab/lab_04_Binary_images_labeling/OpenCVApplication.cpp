@@ -3,6 +3,8 @@
 
 #include "stdafx.h"
 #include "common.h"
+#include <random>
+#include <limits>
 
 
 void testOpenImage()
@@ -708,6 +710,667 @@ void geometricalFeatures()
 	
 }
 
+Point neighbour_8[] = {
+	Point(1, 1),
+	Point(1, 0),
+	Point(1, -1),
+	Point(0, 1),
+	Point(0, 1),
+	Point(-1, 1),
+	Point(-1, 0),
+	Point(-1, -1)
+};
+
+Point neighbour_p[] = {
+	Point(-1, -1),
+	Point(-1, 0),
+	Point(0, -1),
+	Point(1, -1)
+};
+
+void labelingEquivalence()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> img = imread(fname, CV_LOAD_IMAGE_GRAYSCALE);
+		int label = 0;
+		Mat_<int> labels = Mat_<int>(img.rows, img.cols, 0);
+		std::vector<std::vector<int>> edges;
+		for (int i = 0; i < img.rows; i++)
+		{
+			for (int j = 0; j < img.cols; j++)
+			{
+				if (img(i, j) == 0 && labels(i, j) == 0)
+				{
+					std::vector<int> L;
+					for (Point p : neighbour_p)
+					{
+						int n_i = i + p.y;
+						int n_j = j + p.x;
+						if (n_i < 0 || n_i >= img.rows)
+						{
+							continue;
+						}
+						if (n_j < 0 || n_j >= img.cols)
+						{
+							continue;
+						}
+
+						if (labels(n_i, n_j) > 0)
+						{
+							L.push_back(labels(n_i, n_j));
+						}
+					}
+					if (L.size() == 0)
+					{
+						label++;
+						labels(i, j) = label;
+						edges.resize(label + 1);
+					}
+					else
+					{
+						int min_label = INT_MAX;
+						// int min_label = min(L);
+						for (int label_l : L)
+						{
+							if (min_label > label_l)
+							{
+								min_label = label_l;
+							}
+						}
+						labels(i, j) = min_label;
+						for (int label : L)
+						{
+							if (label != min_label)
+							{
+								edges[label].push_back(min_label);
+								edges[min_label].push_back(label);
+							}
+						}
+					}
+
+				}
+			}
+		}
+		
+		int new_label = 0;
+		int *new_labels = new int[label + 1];
+		for(int i = 0; i < label + 1; i++)
+		{
+			new_labels[i] = 0;
+		}
+		for (int i = 0; i < label; i++)
+		{
+			if (new_labels[i] == 0)
+			{
+				new_label++;
+				std::queue<int> Q;
+				new_labels[i] = new_label;
+				Q.push(i);
+				while(!Q.empty())
+				{
+					int label_x = Q.front();
+					Q.pop();
+					for (int label_y : edges[label_x])
+					{
+						if (new_labels[label_y] == 0)
+						{
+							new_labels[label_y] = new_label;
+							Q.push(label_y);
+						}
+					}
+				}
+			}
+		}
+		printf("label count: %d\n", label);
+		printf("new label count: %d\n", new_label);
+
+		std::default_random_engine gen;
+		std::uniform_int_distribution<int> dist(0, 255);
+
+		Vec3b *colors = new Vec3b[label + 1];
+		for(int i = 1; i < label + 1; i++)
+		{
+			colors[i][0] = dist(gen);
+			colors[i][1] = dist(gen);
+			colors[i][2] = dist(gen);
+		}
+		colors[0][0] = 255;
+		colors[0][1] = 255;
+		colors[0][2] = 255;
+
+		Mat_<Vec3b> labeled_img = Mat_<Vec3b>(img.rows, img.cols, Vec3b(0, 0, 0));
+
+		for(int i = 0; i < img.rows; i++)
+		{
+			for (int j = 0; j < img.cols; j++)
+			{
+				int current_label = labels(i, j);
+				int current_new_label = new_labels[current_label];
+				labeled_img(i, j) = colors[current_new_label];
+			}
+		}
+
+		delete[] colors;
+		imshow("labeled", labeled_img);
+		waitKey();
+
+	}
+}
+
+void labelingBfs()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> img = imread(fname, CV_LOAD_IMAGE_GRAYSCALE);
+		int label = 0;
+		Mat_<int> labels = Mat_<int>(img.rows, img.cols, 0);
+		for(int i = 0; i < img.rows; i++)
+		{
+			for(int j = 0; j < img.cols; j++)
+			{
+				if (img(i, j) == 0 && labels(i, j) == 0)
+				{
+					label++;
+					std::queue<Point> q = std::queue<Point>();
+					q.push(Point(j, i));
+					while(!q.empty())
+					{
+						Point p = q.front();
+						q.pop();
+						for (Point d : neighbour_8)
+						{
+							int n_i = p.y + d.y;
+							int n_j = p.x + d.x;
+							if (n_i < 0 || n_i >= img.rows)
+							{
+								continue;
+							}
+							if (n_j < 0 || n_j >= img.cols)
+							{
+								continue;
+							}
+							if (img(n_i, n_j) == 0 && labels(n_i, n_j) == 0)
+							{
+								labels(n_i, n_j) = label;
+								q.push(Point(n_j, n_i));
+							}
+						}
+					}
+				}
+			}
+		}
+
+		printf("label count: %d\n", label);
+
+		std::default_random_engine gen;
+		std::uniform_int_distribution<int> dist(0, 255);
+
+		Vec3b *colors = new Vec3b[label + 1];
+		for(int i = 1; i < label + 1; i++)
+		{
+			colors[i][0] = dist(gen);
+			colors[i][1] = dist(gen);
+			colors[i][2] = dist(gen);
+		}
+		colors[0][0] = 255;
+		colors[0][1] = 255;
+		colors[0][2] = 255;
+
+		Mat_<Vec3b> labeled_img = Mat_<Vec3b>(img.rows, img.cols, Vec3b(0, 0, 0));
+		for(int i = 0; i < labeled_img.rows; i++)
+		{
+			for(int j = 0; j < labeled_img.cols; j++)
+			{
+				labeled_img(i, j) = colors[labels(i, j)];
+			}
+		}
+
+		delete[] colors;
+		imshow("labeled", labeled_img);
+		waitKey();
+	}
+}
+
+int neigh_8_row[] = {
+	0, -1, -1, -1, 0, 1, 1, 1
+};
+
+int neigh_8_col[] = {
+	1, 1, 0, -1, -1, -1, 0, 1
+};
+
+int update_direction(int dir)
+{
+	if (dir % 2 == 1)
+	{
+		return (dir + 6) % 8;
+	}
+	else
+	{
+		return (dir + 7) % 8;
+	}
+}
+
+Point updatePointByDir(Point current, int dir)
+{
+	Point dir_point = Point(current.x + neigh_8_col[dir], current.y + neigh_8_row[dir]);
+	return dir_point;
+}
+
+std::vector<uchar> walkBorder(Point p0, Mat_<uchar> src, Mat_<uchar> dst)
+{
+	std::vector<uchar> ac;
+
+	int n = 0;
+	int dir = 7;
+	boolean stop;
+	Point p1;
+
+	Point current_pos = p0;
+	do
+	{
+		dir = update_direction(dir);
+
+		// spin
+		Point dir_point = updatePointByDir(current_pos, dir);
+		while(src(dir_point.y, dir_point.x) != 0) 
+		{
+			dir = (dir + 1) % 8;
+			dir_point = updatePointByDir(current_pos, dir);
+		}
+
+		dst(dir_point.y, dir_point.x) = 255;
+
+		n++;
+		if (n == 1)
+		{
+			p1 = dir_point;
+		}
+		ac.push_back(dir);
+
+		Point pn_1 = current_pos;
+		current_pos = dir_point;
+
+		stop = n > 1 && dir_point == p1 && pn_1 == p0;
+	} while (!stop);
+	
+	return ac;
+}
+
+std::vector<uchar> calculateDc(std::vector<uchar> ac)
+{
+	std::vector<uchar> dc;
+	for(int i = 1; i < ac.size(); i++)
+	{
+		int aci_plus = ac.at(i);
+		int aci = ac.at(i - 1);
+		uchar dc_curr = (aci_plus - aci + 8) % 8;
+		dc.push_back(dc_curr);
+	}
+	return dc;
+}
+
+void borderTracing()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, CV_LOAD_IMAGE_GRAYSCALE);
+		Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
+		std::vector<uchar> ac;
+
+		for (int row = 0; row < src.rows; row++)
+		{
+			for (int col = 0; col < src.cols; col++)
+			{
+				if (src(row, col) == 0)
+				{
+					Point p0 = Point(col, row);
+					ac = walkBorder(p0, src, dst);
+					col = src.cols;
+					row = src.rows;
+				}
+			}
+		}
+		std::cout << "ac:";
+		for (int dir : ac)
+		{
+			std::cout << dir << " ";
+		}
+		std::cout << std::endl;
+		std::cout << "dc:";
+
+		std::vector<uchar> dc = calculateDc(ac);
+
+		for (int dir : dc)
+		{
+			std::cout << dir << " ";
+		}
+		std::cout << std::endl;
+
+		imshow("labeled", dst);
+		waitKey();
+	}
+	
+}
+
+void borderReconstruction()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		FILE* file = fopen(fname, "r");
+		if (file == NULL)
+		{
+			return;
+		}
+
+		Mat_<uchar> dst = imread(
+			R"(D:\git\TUCN_CS_3yr-2\IP\practice_lab\lab_04_Binary_images_labeling\Images\border\gray_background.bmp)", CV_LOAD_IMAGE_GRAYSCALE);
+
+		Point currentPoint;
+		fscanf(file, "%d %d", &currentPoint.y, &currentPoint.x);
+		int ac_count;
+		fscanf(file, "%d", &ac_count);
+		for(int i = 0; i < ac_count; i++)
+		{
+			int dir;
+			fscanf(file, "%d", &dir);
+			currentPoint = updatePointByDir(currentPoint, dir);
+			dst(currentPoint.y, currentPoint.x) = 0;
+		}
+		imshow("test", dst);
+		waitKey();
+	}
+}
+
+uchar cross[3][3] = {
+	0, 1, 0,
+	1, 1, 1,
+	0, 1, 0
+};
+
+Mat_<uchar> dilation_core(Mat_<uchar> src)
+{
+	Mat_<uchar> dilated = Mat_<uchar>(src.rows, src.cols, (uchar)255);
+	for(int row = 0; row < src.rows; row++)
+	{
+		for(int col = 0; col < src.cols; col++)
+		{
+			if (src(row, col) == 0)
+			{
+				for(int i = -1; i <= 1; i++)
+				{
+					for(int j = -1; j <= 1; j++)
+					{
+						if (cross[i + 1][j + 1] && 
+							row + i >= 0 && col + j >= 0 &&
+							row + i < src.rows && col + j < src.cols)
+						{
+							dilated(row + i, col + j) = 0;
+						}
+					}
+				}
+			}
+		}
+	}
+	return dilated;
+}
+
+void dilation()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		printf("number of times to perform operation");
+		int nr_times = 0;
+		scanf("%d", &nr_times);
+
+		Mat_<uchar> dilated = src.clone();
+		for(int i = 0; i < nr_times; i++)
+		{
+			dilated = dilation_core(dilated);
+		}
+		imshow("original", src);
+		imshow("dilated", dilated);
+		waitKey();
+	}
+}
+
+bool all_in_cross(Mat_<uchar> src, int row, int col)
+{
+	for(int i = -1; i <= 1; i++)
+	{
+		for(int j = -1; j <= 1; j++)
+		{
+			if(!(row + i >= 0 && col + j >= 0 &&
+			   row + i < src.rows && col + j < src.cols))
+			{
+				return false;
+			}
+
+			if (cross[i + 1][j + 1])
+			{
+				if (src(row + i, col + j) != 0)
+				{
+					return false;
+				}
+			}
+		}
+	}
+	
+	return true;
+}
+
+Mat_<uchar> erosion_core(Mat_<uchar> src)
+{
+	Mat_<uchar> eroded = Mat_<uchar>(src.rows, src.cols, (uchar)255);
+	for(int row = 0; row < src.rows; row++)
+	{
+		for(int col = 0; col < src.cols; col++)
+		{
+			if (src(row, col) == 0)
+			{
+				if (all_in_cross(src, row, col))
+				{
+					eroded(row, col) = 0;
+				}
+			}
+		}
+	}
+	return eroded;
+}
+
+void erosion()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		printf("number of times to perform operation");
+		int nr_times = 0;
+		scanf("%d", &nr_times);
+
+		
+		Mat_<uchar> eroded = src.clone();
+		for(int i = 0; i < nr_times; i++)
+		{
+			eroded = erosion_core(eroded);
+		}
+
+		imshow("original", src);
+		imshow("eroded", eroded);
+		waitKey();
+	}
+}
+
+Mat_<uchar> opening_core(Mat_<uchar> src)
+{
+	Mat_<uchar> eroded = erosion_core(src);
+	return dilation_core(eroded);
+}
+
+void opening()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		printf("number of times to perform operation");
+		int nr_times = 0;
+		scanf("%d", &nr_times);
+
+		
+		Mat_<uchar> opened = src.clone();
+		for(int i = 0; i < nr_times; i++)
+		{
+			opened = opening_core(opened);
+		}
+		imshow("original", src);
+		imshow("opening", opened);
+		waitKey();
+	}
+}
+
+Mat_<uchar> closing_core(Mat_<uchar> src)
+{
+	Mat_<uchar> dilated = dilation_core(src);
+	return erosion_core(dilated);
+}
+
+void closing()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		printf("number of times to perform operation");
+		int nr_times = 0;
+		scanf("%d", &nr_times);
+
+		
+		Mat_<uchar> closed = src.clone();
+		for(int i = 0; i < nr_times; i++)
+		{
+			closed = closing_core(closed);
+		}
+		imshow("closing", closed);
+		imshow("original", src);
+		waitKey();
+	}
+}
+
+Mat_<uchar> complement(Mat_<uchar> src)
+{
+	Mat_<uchar> comp = src.clone();
+	for(int i = 0; i < src.rows; i++)
+	{
+		for(int j = 0; j < src.cols; j++)
+		{
+			comp(i, j) = ~(src(i, j));
+		}
+	}
+	return comp;
+}
+
+Mat_<uchar> difference(Mat_<uchar> a, Mat_<uchar> b)
+{
+	Mat_<uchar> diff = a.clone();
+	for(int i = 0; i < a.rows; i++)
+	{
+		for(int j = 0; j < a.cols; j++)
+		{
+			if (b(i, j) == 0)
+			{
+				diff(i, j) = 255;
+			}
+		}
+	}
+
+	return diff;
+}
+
+Mat_<uchar> intersect(Mat_<uchar> a, Mat_<uchar> b)
+{
+	Mat_<uchar> inter = a.clone();
+	for(int i = 0; i < a.rows; i++)
+	{
+		for(int j = 0; j < a.cols; j++)
+		{
+			if (a(i, j) == 0 && b(i, j) == 0)
+			{
+				inter(i, j) = 0;
+			}
+			else
+			{
+				inter(i, j) = 255;
+			}
+		}
+	}
+
+	return inter;
+	
+}
+
+Mat_<uchar> boundary_core(Mat_<uchar> src)
+{
+	Mat_<uchar> eroded = erosion_core(src);
+	return difference(src, eroded);
+
+}
+
+void boundaryExtraction()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		Mat_<uchar> boundary = boundary_core(src);
+		imshow("original", src);
+		imshow("boundary", boundary);
+		waitKey();
+	}
+}
+
+Mat_<uchar> region_filling_core(Mat_<uchar> src, int row, int col)
+{
+	bool no_change;
+	Mat_<uchar> prev = Mat_<uchar>(src.rows, src.cols, (uchar)255);
+	prev(row, col) = 0;
+	Mat_<uchar> comp = complement(src);
+	do
+	{
+		Mat_<uchar> dilated = dilation_core(prev);
+		Mat_<uchar> curr = intersect(dilated, comp);
+		
+		no_change = countNonZero(prev != curr);
+		prev = curr.clone();
+	} while (no_change);
+
+	return prev;
+}
+
+void regionFilling()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		Mat_<uchar> filled = region_filling_core(src, src.rows / 2, src.cols / 2);
+		imshow("original", src);
+		imshow("filled", filled);
+		waitKey();
+	}
+}
+
 int main()
 {
 	int op;
@@ -726,6 +1389,16 @@ int main()
 		printf(" 8 - Snap frame from live video\n");
 		printf(" 9 - Mouse callback demo\n");
 		printf(" 10 - L4 - Geometrical features\n");
+		printf(" 11 - L5 - Labeling (BFS)\n");
+		printf(" 12 - L5 - Labeling (equivalence classes)\n");
+		printf(" 13 - L6 - Border tracing alg\n");
+		printf(" 14 - L6 - Border reconstruction\n");
+		printf(" 15 - L7 - Dilation\n");
+		printf(" 16 - L7 - Erosion\n");
+		printf(" 17 - L7 - Opening\n");
+		printf(" 18 - L7 - Closing\n");
+		printf(" 19 - L7 - Boundary extraction\n");
+		printf(" 20 - L7 - Region filling\n");
 		printf(" 0 - Exit\n\n");
 		printf("Option: ");
 		scanf("%d",&op);
@@ -761,6 +1434,36 @@ int main()
 				break;
 			case 10:
 				geometricalFeatures();
+				break;
+			case 11:
+				labelingBfs();
+				break;
+			case 12:
+				labelingEquivalence();
+				break;
+			case 13:
+				borderTracing();
+				break;
+			case 14:
+				borderReconstruction();
+				break;
+			case 15:
+				dilation();
+				break;
+			case 16:
+				erosion();
+				break;
+			case 17:
+				opening();
+				break;
+			case 18:
+				closing();
+				break;
+			case 19:
+				boundaryExtraction();
+				break;
+			case 20:
+				regionFilling();
 				break;
 		}
 	}

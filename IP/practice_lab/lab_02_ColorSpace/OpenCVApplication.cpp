@@ -574,6 +574,153 @@ void inverseMat()
 	system("pause");
 }
 
+void extractColor()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		const Mat_<Vec3b> colorImage = imread(fname, IMREAD_COLOR);
+		Mat_<uchar> redChannel = Mat_<uchar>(colorImage.rows, colorImage.cols);
+		Mat_<uchar> greenChannel = Mat_<uchar>(colorImage.rows, colorImage.cols);
+		Mat_<uchar> blueChannel = Mat_<uchar>(colorImage.rows, colorImage.cols);
+
+		for (int row = 0; row < colorImage.rows; row++)
+		{
+			for(int col = 0; col < colorImage.cols; col++)
+			{
+				Vec3b pixel = colorImage(row, col);
+				redChannel(row, col) = pixel[2];
+				greenChannel(row, col) = pixel[1];
+				blueChannel(row, col) = pixel[0];
+			}
+		}
+		imshow("original", colorImage);
+		imshow("red", redChannel);
+		imshow("green", greenChannel);
+		imshow("blue", blueChannel);
+		waitKey();
+	}
+}
+
+void colorToGrayscale()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		const Mat_<Vec3b> colorImage = imread(fname, IMREAD_COLOR);
+		Mat_<uchar> grayScaleImage = Mat_<uchar>(colorImage.rows, colorImage.cols);
+
+		for (int row = 0; row < colorImage.rows; row++)
+		{
+			for(int col = 0; col < colorImage.cols; col++)
+			{
+				Vec3b pixel = colorImage(row, col);
+				grayScaleImage(row, col) = (pixel[0] + pixel[1] + pixel[2]) / 3;
+			}
+		}
+		imshow("original", colorImage);
+		imshow("grayscale", grayScaleImage);
+		waitKey();
+	}
+}
+
+void grayScaleToBinary()
+{
+	int threshold;
+	printf("please enter a threshold value:");
+	if (scanf("%d", &threshold) != 1)
+	{
+		printf("not a number\n");
+		return;
+	}
+
+	if (threshold < 0 || threshold > 255)
+	{
+		printf("number should be positive\n");
+		return;
+	}
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		const Mat_<uchar> grayScaleImage = imread(fname, IMREAD_GRAYSCALE);
+		Mat_<uchar> binaryImage = Mat_<uchar>(grayScaleImage.rows, grayScaleImage.cols);
+
+		for (int row = 0; row < grayScaleImage.rows; row++)
+		{
+			for(int col = 0; col < grayScaleImage.cols; col++)
+			{
+				uchar pixel = grayScaleImage(row, col);
+				binaryImage(row, col) = (pixel >= threshold) ? 255 : 0;
+			}
+		}
+		imshow("grayscale", grayScaleImage);
+		imshow("binary", binaryImage);
+		waitKey();
+	}
+}
+
+void RGBToHSV()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		const Mat_<Vec3b> rgbImage = imread(fname, IMREAD_COLOR);
+		Mat_<uchar> hueImage = Mat_<uchar>(rgbImage.rows, rgbImage.cols);
+		Mat_<uchar> saturationImage = Mat_<uchar>(rgbImage.rows, rgbImage.cols);
+		Mat_<uchar> valueImage = Mat_<uchar>(rgbImage.rows, rgbImage.cols);
+
+		for (int row = 0; row < rgbImage.rows; row++)
+		{
+			for(int col = 0; col < rgbImage.cols; col++)
+			{
+				Vec3b pixel = rgbImage(row, col);
+				float r = (float)pixel[2] / 255;
+				float g = (float)pixel[1] / 255;
+				float b = (float)pixel[0] / 255;
+
+				float M = max(r, max(g, b));
+				float m = min(r, min(g, b));
+				float C = M - m;
+
+				float V = M;
+				float S = 0;
+				if (C)
+				{
+					S = C / V;
+				}
+				float H = 0;
+				if (C)
+				{
+					if (M == r)
+					{
+						H = 60 * (g - b) / C;
+					}
+					if (M == g)
+					{
+						H = 120 + 60 * (b - r) / C;
+					}
+					if (M == b)
+					{
+						H = 240 + 60 * (r - g) / C;
+					}
+				}
+				if (H < 0)
+				{
+					H += 360;
+				}
+				valueImage(row, col) = V * 255;
+				hueImage(row, col) = (H * 255) / 360;
+				saturationImage(row, col) = S * 255;
+			}
+		}
+		imshow("original", rgbImage);
+		imshow("hue", hueImage);
+		imshow("saturation", saturationImage);
+		imshow("value", valueImage);
+		waitKey();
+	}
+}
+
 int main()
 {
 	int op;
@@ -595,6 +742,10 @@ int main()
 		printf(" 11 - L1 - Multiplicative factor grayscale\n");
 		printf(" 12 - L1 - Color the image\n");
 		printf(" 13 - L1 - Inverse of matrix\n");
+		printf(" 14 - L2 - RGB channels\n");
+		printf(" 15 - L2 - Conversion color-gray scale\n");
+		printf(" 16 - L2 - Conversion gray scale-binary\n");
+		printf(" 17 - L2 - Conversion RGB-HSV\n");
 		printf(" 0 - Exit\n\n");
 		printf("Option: ");
 		scanf("%d",&op);
@@ -639,6 +790,18 @@ int main()
 				break;
 			case 13:
 				inverseMat();
+				break;
+			case 14:
+				extractColor();
+				break;
+			case 15:
+				colorToGrayscale();
+				break;
+			case 16:
+				grayScaleToBinary();
+				break;
+			case 17:
+				RGBToHSV();
 				break;
 		}
 	}
