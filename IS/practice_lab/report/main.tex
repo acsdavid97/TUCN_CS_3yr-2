@@ -1,0 +1,131 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{listings}
+
+% Title Page
+\title{Bank Marketing}
+\author{\'Acs D\'avid}
+
+
+\begin{document}
+\maketitle
+
+
+\tableofcontents
+\section{Overview}
+ 
+ \subsection{Running instructions}
+
+\begin{enumerate}
+\item downloading the conda environment from here: 
+\url {https://conda.io/docs/user-guide/install/linux.html}
+\item and running: \textbf{bash Anaconda-latest-Linux-x86\_64.sh} in the terminal.
+\item navigate to the desired working directory and run: 
+	\textbf{jupyter notebook} to start the development environment. 
+\item and you are good to go.
+
+\end{enumerate}
+ 
+ \subsection{Theoretical aspects}
+  \subsubsection{Data representation}
+  
+  In machine learning, particularly supervised classification, 
+  data is represented in a \textit{matrix} form: each one of the \textit{rows} 
+  of the data represent an \textit{example} from the dataset, while each one of the \textit{columns} 
+  represent a \textit{feature or an attribute}. Since supervised learning assumes the existence of 
+  known target values (features) we can represent them by a special column: named \textit{y}.
+  
+  Hence the final representation of data will look like this:
+  \[
+  \begin{pmatrix}
+  x_{1, 1} & x_{1, 2} & \cdots & x_{1, n} & y_{1} \\
+  x_{2, 1} & x_{2, 2} & \cdots & x_{2, n} & y_{2} \\
+  \vdots & \vdots & \ddots & \vdots & \vdots \\
+  x_{m, 1} & x_{m, 2} & \cdots & x_{m, n} & y_{m}
+  \end{pmatrix}
+  \]
+  
+  where $m$ is the number of examples and $n$ is the number of features.
+  
+  \subsubsection{Algorithm}
+  For this assignment \textit{Support Vector Machines} (SVMs) were chosen as the algorithm. 
+ 
+ A SVM treats the features of an examples as coordinates, an projects them to an \textit{n-dimensional }
+ coordinate system. Then the examples may be separated by a \textit{hyper-plane}. 
+ The SVM is a \textit{frontier} which best separates these points. 
+ Clear separation is not always achievable, and a kernel trick must be used, which will project the
+ data to a higher dimensional plane, where clear segregation is easily attainable.
+ 
+ Most important parameters of the SVM:
+ \begin{itemize}
+ \item \textbf{kernel}: function that maps the low dimensional input space to a higher dimensional one.
+ \item \textbf{C}: penalty parameter of the error.
+ \item \textbf{gamma}: kernel coefficient.
+ \end{itemize}
+ 
+ \subsection{Existing Example - Predicting digits}
+ 
+ The simple example is recognizing digits from the built-in scikit-learn datasets.
+ The \textbf{input} is the pixel representation of digits, each having a label (which digit it is).
+ The \textbf{output} is the number of the digit the classifier recognized. 
+ 
+\lstinputlisting[language=Python]{example.py}
+
+ 
+ \subsection{Your own small Example - Predicting wine}
+ In my own example I will use the wine dataset from scikit-learn.
+ The input is various features of wine and the output is the predicted class of wine.
+ I used cross validation to check the accuracy of the trained model and
+ standard to scaling to pre-process the data.
+ 
+ \lstinputlisting[language=Python]{my_example.py}
+ 
+ In this example, the accuracy was \textbf{98\%}.
+ 
+ \section{Proposed problem}
+  \subsection{Specification} 
+  
+  The problem to be solved will be a classification: we should predict if a client of a Portuguese bank will
+  accept the term deposit of the bank. 
+  
+  The dataset can be downloaded from the following link: 
+  \url{https://archive.ics.uci.edu/ml/datasets/Bank+Marketing}
+  
+  There are two version of the dataset:
+  \begin{itemize}
+  \item \textbf{bank-additional.csv}: containing 4119 samples
+  \item \textbf{bank-additional-full.csv}: containing 41188 samples
+  \end{itemize}
+  
+  Each of the datasets contains 20 input variables, such: age, job, martial status of the bank's client.
+  
+    
+  In order to use the dataset we should explore it, visualize it and binarize the data present there.
+  For the classifier SVM will be used as a main method.
+  For validation Stratified k-fold will be used.
+  
+  \subsubsection{Relevant links:}
+  \begin{enumerate}
+  \item detecting hearth failure using SVM \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3092139/}
+  \item detecting bank fraud using SVM \url{www.sdiwc.net/digital-library/web-admin/upload-pdf/00001012.pdf}
+  \end{enumerate}
+
+  
+  
+  \subsection{Implementation} 
+  Deadline:  week  12
+  
+ Implement solution(s) for the proposed problem
+
+  \subsection{Documentation of your solution}
+  Deadline: week 13
+  
+  Document your solution: details of data representation, analysis of the results.
+  
+  \subsubsection{Presentation of your solution}
+Deadline: week 14
+
+\end{document}          
