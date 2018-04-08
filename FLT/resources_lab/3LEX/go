@@ -15,7 +15,7 @@ then
 fi
 
 $LEX_GENERATOR $1
-$GCC -o $NAME.exe $LEX_SOURCE -$LIBRARY
+$GCC -o $NAME $LEX_SOURCE -$LIBRARY
 rm $LEX_SOURCE
 $NAME.exe < $TEST | less
   
