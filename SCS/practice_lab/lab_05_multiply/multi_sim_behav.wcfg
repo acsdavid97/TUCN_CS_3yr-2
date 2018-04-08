@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="multi_sim_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="multi_sim" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="758752819fs"></ZoomStartTime>
+      <ZoomEndTime time="1048249437fs"></ZoomEndTime>
+      <Cursor1Time time="780453000fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="175"></NameColumnWidth>
+      <ValueColumnWidth column_width="138"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="13" />
+   <wvobject fp_name="/multi_sim/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/result" type="array">
+      <obj_property name="ElementShortName">result[7:0]</obj_property>
+      <obj_property name="ObjectShortName">result[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/A" type="array">
+      <obj_property name="ElementShortName">A[3:0]</obj_property>
+      <obj_property name="ObjectShortName">A[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/B" type="array">
+      <obj_property name="ElementShortName">B[3:0]</obj_property>
+      <obj_property name="ObjectShortName">B[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/R" type="array">
+      <obj_property name="ElementShortName">R[7:0]</obj_property>
+      <obj_property name="ObjectShortName">R[7:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/A_reg" type="array">
+      <obj_property name="ElementShortName">A_reg[3:0]</obj_property>
+      <obj_property name="ObjectShortName">A_reg[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/B_reg" type="array">
+      <obj_property name="ElementShortName">B_reg[3:0]</obj_property>
+      <obj_property name="ObjectShortName">B_reg[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/A_bitwise" type="array">
+      <obj_property name="ElementShortName">A_bitwise[3:0]</obj_property>
+      <obj_property name="ObjectShortName">A_bitwise[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/A_bitwise_ext" type="array">
+      <obj_property name="ElementShortName">A_bitwise_ext[7:0]</obj_property>
+      <obj_property name="ObjectShortName">A_bitwise_ext[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/Partial_result_shifted" type="array">
+      <obj_property name="ElementShortName">Partial_result_shifted[7:0]</obj_property>
+      <obj_property name="ObjectShortName">Partial_result_shifted[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/Partial_result_added" type="array">
+      <obj_property name="ElementShortName">Partial_result_added[7:0]</obj_property>
+      <obj_property name="ObjectShortName">Partial_result_added[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/multip/Partial_result" type="array">
+      <obj_property name="ElementShortName">Partial_result[7:0]</obj_property>
+      <obj_property name="ObjectShortName">Partial_result[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/multi_sim/load" type="logic">
+      <obj_property name="ElementShortName">load</obj_property>
+      <obj_property name="ObjectShortName">load</obj_property>
+   </wvobject>
+</wave_config>
