@@ -1,6 +1,7 @@
 # ignore everything (cannot ignore binaries otherwise)
 *
+!*/
+!.gitignore
 # allow only yacc and lex files
 !*.l
 !*.y
-!.gitignore
