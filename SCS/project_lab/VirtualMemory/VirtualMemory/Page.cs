@@ -6,25 +6,35 @@ using System.Threading.Tasks;
 
 namespace VirtualMemory
 {
-    class Page
+    public class Page : IMemory
     {
         public static readonly int PageSize = 1 << 12;
 
-        private readonly IList<byte> _pageBytes;
+        public readonly byte[] PageBytes;
 
         public Page()
         {
-            _pageBytes = new byte[PageSize];
+            PageBytes = new byte[PageSize];
         }
 
-        public byte ReadContent(Address address)
+        private void ValidateAddress(int address)
         {
-            return _pageBytes[address.Offset];
+            if (address < 0 || Page.PageSize < address)
+            {
+                throw new ArgumentException($"address out of range for page: {address}");
+            }
         }
 
-        public void WriteContent(Address address, byte toWrite)
+        public byte ReadContent(int address)
         {
-            _pageBytes[address.Offset] = toWrite;
+            ValidateAddress(address);
+            return PageBytes[address];
+        }
+
+        public void WriteContent(int address, byte toWrite)
+        {
+            ValidateAddress(address);
+            PageBytes[address] = toWrite;
         }
     }
 }

@@ -6,22 +6,22 @@ using System.Threading.Tasks;
 
 namespace VirtualMemory
 {
-    class Process
+    public class Process
     {
         public int Pid { get; set; }
         private readonly VirtualMemory _memory;
 
-        public Process()
+        public Process(VirtualMemory virtualMemory)
         {
-            _memory = new VirtualMemory();
+            _memory = virtualMemory;
         }
 
-        public byte ReadMemory(Address address)
+        public byte ReadMemory(int address)
         {
             return _memory.ReadContent(address);
         }
 
-        public void WriteMemory(Address address, byte toWrite)
+        public void WriteMemory(int address, byte toWrite)
         {
             _memory.WriteContent(address, toWrite);
         }

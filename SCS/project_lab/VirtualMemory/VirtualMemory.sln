@@ -5,6 +5,10 @@ VisualStudioVersion = 15.0.27428.2015
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualMemory", "VirtualMemory\VirtualMemory.csproj", "{AF107C06-BFC9-474D-BF02-34078DFE2125}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualMemoryTests", "VirtualMemoryTests\VirtualMemoryTests.csproj", "{F32E1309-2962-4892-9662-777822A953B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualMemoryApp", "VirtualMemoryApp\VirtualMemoryApp.csproj", "{F923E0F5-B357-41E3-A1C4-A4E9A7FB10C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{AF107C06-BFC9-474D-BF02-34078DFE2125}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AF107C06-BFC9-474D-BF02-34078DFE2125}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AF107C06-BFC9-474D-BF02-34078DFE2125}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F32E1309-2962-4892-9662-777822A953B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F32E1309-2962-4892-9662-777822A953B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F32E1309-2962-4892-9662-777822A953B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F32E1309-2962-4892-9662-777822A953B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F923E0F5-B357-41E3-A1C4-A4E9A7FB10C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F923E0F5-B357-41E3-A1C4-A4E9A7FB10C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F923E0F5-B357-41E3-A1C4-A4E9A7FB10C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F923E0F5-B357-41E3-A1C4-A4E9A7FB10C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
