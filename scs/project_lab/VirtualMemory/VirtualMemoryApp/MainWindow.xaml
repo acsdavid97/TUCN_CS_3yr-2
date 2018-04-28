@@ -1,0 +1,50 @@
+﻿<Window
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:control="clr-namespace:WpfHexaEditor;assembly=WPFHexaEditor"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:VirtualMemoryApp"
+        x:Class="VirtualMemoryApp.MainWindow"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="650" Width="850">
+    <Grid x:Name="MainGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
+
+            <ListBox x:Name="PhysicalPageListBox" Grid.Column="0" ItemsSource="{Binding PhysicalPages}" SelectedItem="{Binding SelectedPhysicalPage}">
+                <ListBox.DataContext>
+                    <local:VirtualMemoryViewModel/>
+                </ListBox.DataContext>
+            </ListBox>
+            <ListBox x:Name="SwapPageListBox" Grid.Column="1" ItemsSource="{Binding SwapPages}" SelectedItem="{Binding SelectedSwapPage}">
+                <ListBox.DataContext>
+                    <local:VirtualMemoryViewModel/>
+                </ListBox.DataContext>
+            </ListBox>
+        </Grid>
+
+        <control:HexEditor
+            DataContext="local:VirtualMemoryViewModel"
+            x:Name="HexEdit"
+            ReadOnlyMode="False"
+            Width="Auto"
+            Height="Auto"
+            Grid.Row="1"
+            Stream="{Binding Path=HexViewStream}">
+            <d:HexEditor.DataContext>
+                <local:VirtualMemoryViewModel />
+            </d:HexEditor.DataContext>
+        </control:HexEditor>
+    </Grid>
+
+</Window>
+
