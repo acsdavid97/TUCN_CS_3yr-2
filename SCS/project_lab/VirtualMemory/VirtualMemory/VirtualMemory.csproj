@@ -72,11 +72,13 @@
     <Compile Include="Memory.cs" />
     <Compile Include="MemoryFullException.cs" />
     <Compile Include="MemoryManagementUnit.cs" />
+    <Compile Include="MmuLogEntry.cs" />
     <Compile Include="NoReplaceMmu.cs" />
     <Compile Include="Page.cs" />
     <Compile Include="PageIndexOffset.cs" />
     <Compile Include="PhysicalMemory.cs" />
     <Compile Include="Process.cs" />
+    <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SwapMemory.cs" />
     <Compile Include="UnityConfig.cs" />

@@ -15,6 +15,7 @@ namespace VirtualMemory
 
         public readonly PhysicalMemory PhysicalMemory;
         public readonly SwapMemory Swap;
+        public readonly List<MmuLogEntry> Logs;
 
         protected MemoryManagementUnit(PhysicalMemory physicalMemory, SwapMemory swap)
         {
@@ -22,6 +23,7 @@ namespace VirtualMemory
             PhysToVirt = new Dictionary<int, int>();
             VirtToSwap = new Dictionary<int, int>();
             SwapToVirt = new Dictionary<int, int>();
+            Logs = new List<MmuLogEntry>();
 
             PhysicalMemory = physicalMemory;
             Swap = swap;
@@ -34,15 +36,25 @@ namespace VirtualMemory
             // if virtual page is mapped in physical memory
             if (VirtToPhys.ContainsKey(virtualIndexOffset.Index))
             {
-                return VirtualIndexOffsetToPhysicalAddress(virtualIndexOffset);
+                var physicalAddress = VirtualIndexOffsetToPhysicalAddress(virtualIndexOffset);
+
+                var foundIndex = Utilities.AddressToIndexOffset(physicalAddress);
+                Logs.Add(new InPhysicalMemoryMmuLogEntry(virtualAddress, foundIndex.Index));
+
+                return physicalAddress;
             }
 
             // if virtual page is in the swap
             if (VirtToSwap.ContainsKey(virtualIndexOffset.Index))
             {
                 var pageToReplaceIndex = GetPageToReplace(virtualIndexOffset);
-                ReplacePage(virtualIndexOffset, pageToReplaceIndex);
-                return VirtualIndexOffsetToPhysicalAddress(virtualIndexOffset);
+                var swapIndex = ReplacePage(virtualIndexOffset, pageToReplaceIndex);
+                var physicalAddress = VirtualIndexOffsetToPhysicalAddress(virtualIndexOffset);
+
+                var foundIndex = Utilities.AddressToIndexOffset(physicalAddress);
+                Logs.Add(new InSwapMemoryMmuLogEntry(virtualAddress, swapIndex, foundIndex.Index));
+                
+                return physicalAddress;
             }
             
             // find an empty physical page 
@@ -51,7 +63,11 @@ namespace VirtualMemory
                 if (!PhysToVirt.ContainsKey(physicalIndex))
                 {
                     MapPhysicalAndVirtual(physicalIndex, virtualIndexOffset.Index);
-                    return VirtualIndexOffsetToPhysicalAddress(virtualIndexOffset);
+                    var physicalAddress = VirtualIndexOffsetToPhysicalAddress(virtualIndexOffset);
+
+                    Logs.Add(new NewPhysicalMemoryMmuLogEntry(virtualAddress, physicalIndex));
+
+                    return physicalAddress;
                 }
             }
 
@@ -67,16 +83,20 @@ namespace VirtualMemory
                     var pageIndexToReplace = GetPageToReplace(virtualIndexOffset);
                     ReplacePage(virtualIndexOffset, pageIndexToReplace);
 
+                    Logs.Add(new NewSwapMemoryMmuLogEntry(virtualAddress, swapIndex, pageIndexToReplace));
+
                     return VirtualIndexOffsetToPhysicalAddress(virtualIndexOffset);
                 }
             }
+
+            Logs.Add(new NoMoreMemoryMmuLogEntry(virtualAddress));
 
             throw new MemoryFullException();
         }
 
         public abstract int GetPageToReplace(PageIndexOffset virtualAddress);
 
-        public void ReplacePage(PageIndexOffset virtualAddress, int pageIndexToReplace)
+        public int ReplacePage(PageIndexOffset virtualAddress, int pageIndexToReplace)
         {
             var swapIndex = VirtToSwap[virtualAddress.Index];
             
@@ -94,6 +114,8 @@ namespace VirtualMemory
 
             // update physical mappings
             MapPhysicalAndVirtual(pageIndexToReplace, virtualAddress.Index);
+
+            return swapIndex;
         }
 
         private int VirtualIndexOffsetToPhysicalAddress(PageIndexOffset virtualIndexOffset)
@@ -114,12 +136,15 @@ namespace VirtualMemory
                 PhysToVirt.Remove(physicalIndex);
                 VirtToPhys.Remove(prevVirtualIndex);
             }
+
+            PhysicalMemory.Pages[physicalIndex].MappedTo = virtualIndex;
             VirtToPhys[virtualIndex] = physicalIndex;
             PhysToVirt[physicalIndex] = virtualIndex;
         }
 
         protected virtual void MapSwapAndVirtual(int swapIndex, int virtualIndex)
         {
+            Swap.Pages[swapIndex].MappedTo = virtualIndex;
             SwapToVirt[swapIndex] = virtualIndex;
             VirtToSwap[virtualIndex] = swapIndex;
         }
