@@ -1371,6 +1371,862 @@ void regionFilling()
 	}
 }
 
+int* calculateHistogram(Mat_<uchar> src)
+{
+	int* hist = new int[256];
+	for(int i = 0; i < 256; i++)
+	{
+		hist[i] = 0;
+	}
+
+	for(int row = 0; row < src.rows; row++)
+	{
+		for(int col = 0; col < src.cols; col++)
+		{
+			uchar pixel = src(row, col);
+			hist[pixel]++;
+		}
+	}
+
+	return hist;
+}
+
+double* hist2pdf(int* histogram, const int hist_count, const int pixel_count)
+{
+	double* pdf = new double[hist_count];
+	for(int i = 0; i < hist_count; i++)
+	{
+		pdf[i] = (double)histogram[i] / pixel_count;
+	}
+	return pdf;
+}
+
+double* pdf2cpdf(double* pdf, const int hist_count)
+{
+	double* cpdf = new double[hist_count];
+	cpdf[0] = pdf[0];
+	for(int i = 1; i < hist_count; i++)
+	{
+		cpdf[i] = cpdf[i - 1] + pdf[i];
+	}
+	return cpdf;
+}
+
+int* pdf2hist(double* pdf, const int hist_count, const int pixel_count)
+{
+	int* histogram = new int[hist_count];
+	for(int i = 0; i < hist_count; i++)
+	{
+		histogram[i] = (int)(pdf[i] * pixel_count);
+	}
+	return histogram;
+}
+
+double calculateMean(int* hist, int start, int end)
+{
+	int sum = 0;
+	int count = 0;
+	for(int g = start; g < end; g++)
+	{
+		sum += g * hist[g];
+		count += hist[g];
+	}
+	double mean = (double)sum / count;
+	return mean;
+}
+
+double calculateStdDev(double* pdf, int start, int end, double mean)
+{
+	double sum = 0;
+	for(int g = start; g < end; g++)
+	{
+		sum += (g - mean) * (g - mean) * pdf[g];
+	}
+	return sqrt(sum);
+}
+
+void showHist()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		int* histogram = calculateHistogram(src);
+
+		const int HIST_COUNT = 256;
+		const int PIXEL_COUNT = src.cols * src.rows;
+
+		double* pdf = hist2pdf(histogram, HIST_COUNT, PIXEL_COUNT);
+		double* cpdf = pdf2cpdf(pdf, HIST_COUNT);
+		int* cum_hist = pdf2hist(cpdf, HIST_COUNT, PIXEL_COUNT);
+
+		double mean = calculateMean(histogram, 0, HIST_COUNT);
+		std::cout << "mean: " << mean << std::endl;
+
+		double std_dev = calculateStdDev(pdf, 0, HIST_COUNT, mean);
+		std::cout << "std_dev: " << std_dev << std::endl;
+
+		showHistogram("histogram", histogram, HIST_COUNT, 256);
+		showHistogram("cum_hist", cum_hist, HIST_COUNT, 256);
+		waitKey();
+	}
+	
+}
+
+int getMaxIntensity(int* hist, const int hist_count)
+{
+	for( int i = hist_count - 1; i >= 0; i--)
+	{
+		if(hist[i] > 0)
+		{
+			return i;
+		}
+	}
+	return 0;
+}
+
+int getMinIntensity(int* hist, const int hist_count)
+{
+	for( int i = 0; i < hist_count; i++)
+	{
+		if(hist[i] > 0)
+		{
+			return i;
+		}
+	}
+	return hist_count - 1;
+}
+
+int calculateBasicThreshold(Mat_<uchar> src)
+{
+	const int HIST_COUNT = 256;
+	const int PIXEL_COUNT = src.cols * src.rows;
+
+	int* histogram = calculateHistogram(src);
+	int min_intensity = getMinIntensity(histogram, HIST_COUNT);
+	int max_intensity = getMaxIntensity(histogram, HIST_COUNT);
+	
+	int curr_threshold = (min_intensity + max_intensity) / 2;
+	double error;
+	do
+	{
+		double mean_1 = calculateMean(histogram, 0, curr_threshold + 1);
+		double mean_2 = calculateMean(histogram, curr_threshold, HIST_COUNT);
+		double prev_threshold = curr_threshold;
+		curr_threshold = (int)(mean_1 + mean_2) / 2;
+		error = abs(curr_threshold - prev_threshold);
+	} while (error > 0.1);
+
+	return curr_threshold;
+}
+
+Mat_<uchar> thresholdImage(Mat_<uchar> src, uchar threshold)
+{
+	Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
+	for(int row = 0; row < src.rows; row++)
+	{
+		for(int col = 0; col < src.cols; col++)
+		{
+			if (src(row, col) > threshold)
+			{
+				dst(row, col) = 255;
+			}
+		}
+	}
+
+	return dst;
+}
+
+void basicThresholding()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		int threshold = calculateBasicThreshold(src);
+		std::cout << "threshold: " << threshold;
+
+		Mat_<uchar> thresholded = thresholdImage(src, threshold);
+
+		imshow("original ", src);
+		imshow("thresholded", thresholded);
+	
+		waitKey();
+	}
+}
+
+uchar coercePixel(int pixel)
+{
+	if (pixel < 0)
+	{
+		return 0;
+	}
+	if (pixel > 255)
+	{
+		return 255;
+	}
+	return pixel;
+	
+}
+
+uchar streachShrink(int g_in, int g_out_min, int g_out_max, int g_in_min, int g_in_max)
+{
+	double ratio = ((double)(g_out_max - g_out_min) / (g_in_max - g_in_min));
+	int streachedShrunk = g_out_min + (int)((g_in - g_in_min) * ratio);
+
+	return coercePixel(streachedShrunk);
+}
+
+Mat_<uchar> histogramStreachShirnkCore(Mat_<uchar> src, uchar g_min, uchar g_max)
+{
+	Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
+	int* hist = calculateHistogram(src);
+	const int HIST_COUNT = 256;
+	int g_in_min = getMinIntensity(hist, HIST_COUNT);
+	int g_in_max = getMaxIntensity(hist, HIST_COUNT);
+	
+	for(int row = 0; row < src.rows; row++)
+	{
+		for (int col = 0; col < src.cols; col++)
+		{
+			dst(row, col) = streachShrink(src(row, col), g_min, g_max, g_in_min, g_in_max);
+		}
+	}
+	return dst;
+}
+
+void histogramStreachShirnk()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		std::cout << "enter the min:";
+		int g_min;
+		std::cin >> g_min;
+
+		std::cout << "enter the max:";
+		int g_max;
+		std::cin >> g_max;
+
+		Mat_<uchar> changed = histogramStreachShirnkCore(src, g_min, g_max);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> brightnessChangeCore(Mat_<uchar> src, int offset)
+{
+	Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
+	for(int row = 0; row < src.rows; row++)
+	{
+		for(int col = 0; col < src.cols; col++)
+		{
+			int offsetedPixel = src(row, col) + offset;
+			dst(row, col) = coercePixel(offsetedPixel);
+		}
+	}
+	
+	return dst;
+}
+
+void brightnessChange()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		std::cout << "enter the offset:";
+		int offset;
+		std::cin >> offset;
+
+		Mat_<uchar> changed = brightnessChangeCore(src, offset);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> gammaCorrectionCore(Mat_<uchar> src, double gamma)
+{
+	Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
+	for(int row = 0; row < src.rows; row++)
+	{
+		for(int col = 0; col < src.cols; col++)
+		{
+			double normalized = (double)src(row, col) / 256;
+			int gamma_corrected_pixel = (int)(pow(normalized, gamma) * 256);
+			dst(row, col) = coercePixel(gamma_corrected_pixel);
+		}
+	}
+	
+	return dst;
+}
+
+void gammaCorrection()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		std::cout << "enter the gamma:";
+		double gamma;
+		std::cin >> gamma;
+
+		Mat_<uchar> changed = gammaCorrectionCore(src, gamma);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> histogramEqualizationCore(Mat_<uchar> src)
+{
+	int* histogram = calculateHistogram(src);
+	const int HIST_COUNT = 256;
+	double* pdf = hist2pdf(histogram, 256, src.rows * src.cols);
+	double* cpdf = pdf2cpdf(pdf, HIST_COUNT);
+	
+	Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
+	for (int row = 0; row < src.rows; row++)
+	{
+		for (int col = 0; col < src.cols; col++) 
+		{
+			uchar g_in = src(row, col);
+			int g_out = (int)(255 * cpdf[g_in]);
+			dst(row, col) = coercePixel(g_out);
+		}
+	}
+
+	return dst;
+}
+
+void histogramEqualization()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		Mat_<uchar> changed = histogramEqualizationCore(src);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+uchar calculateConvolutionPixel(Mat_<uchar> src, int row, int col, Mat_<int> kernel, int normalizer)
+{
+	int kernelRowOffset = kernel.rows / 2;
+	int kernelColOffset = kernel.cols / 2;
+
+	int convolution = 0;
+	for(int kernel_row = 0; kernel_row < kernel.rows ; kernel_row++)
+	{
+		for(int kernel_col = 0; kernel_col < kernel.cols; kernel_col++)
+		{
+			int pixel_row = row + kernel_row - kernelRowOffset;
+			int pixel_col = col + kernel_col - kernelColOffset;
+			uchar current_pixel = src(pixel_row, pixel_col);
+			convolution += current_pixel * kernel(kernel_row, kernel_col);
+		}
+	}
+
+	int normalized_conv = convolution / normalizer;
+
+	return saturate_cast<uchar>(normalized_conv);
+}
+
+Mat_<uchar> applyConvolution(Mat_<uchar> src, Mat_<int> kernel, int normalizer)
+{
+	Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
+
+	int kernelRowOffset = kernel.rows / 2;
+	int kernelColOffset = kernel.cols / 2;
+
+	for(int row = kernelRowOffset; row < src.rows - kernelRowOffset; row++)
+	{
+		for(int col = kernelColOffset; col < src.cols - kernelColOffset; col++)
+		{
+			dst(row, col) = calculateConvolutionPixel(src, row, col, kernel, normalizer);
+		}
+	}
+
+	return dst;
+}
+
+Mat_<uchar> meanFilter3x3Core(Mat_<uchar> src)
+{
+	Mat_<int> kernel = Mat_<int>(3, 3, 1);
+	return applyConvolution(src, kernel, 9);
+}
+
+void meanFilter3x3()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		Mat_<uchar> changed = meanFilter3x3Core(src);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> meanFilter5x5Core(Mat_<uchar> src)
+{
+	Mat_<int> kernel = Mat_<int>(5, 5, 1);
+	return applyConvolution(src, kernel, 25);
+}
+
+void meanFilter5x5()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		Mat_<uchar> changed = meanFilter5x5Core(src);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> gaussianFilterCore(Mat_<uchar> src)
+{
+	char kerneldata[] = {
+		1, 2, 1,
+		2, 4, 2,
+		1, 2, 1 
+	};
+	Mat_<char> kernel = Mat_<char>(3, 3, kerneldata);
+	return applyConvolution(src, kernel, 16);
+}
+
+void gaussianFilter()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		Mat_<uchar> changed = gaussianFilterCore(src);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> laplaceFilterCore(Mat_<uchar> src)
+{
+	char kerneldata[] = {
+		 0, -1,  0,
+		-1,  4, -1,
+		 0, -1,  0 
+	};
+	Mat_<char> kernel = Mat_<char>(3, 3, kerneldata);
+	return applyConvolution(src, kernel, 1);
+}
+
+void laplaceFilter()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		Mat_<uchar> changed = laplaceFilterCore(src);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> highPassFilterCore(Mat_<uchar> src)
+{
+	int kerneldata[] = {
+		 0, -1,  0,
+		-1,  5, -1,
+		 0, -1,  0 
+	};
+	Mat_<int> kernel = Mat_<int>(3, 3, kerneldata);
+	return applyConvolution(src, kernel, 1);
+}
+
+void highPassFilter()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		Mat_<uchar> changed = highPassFilterCore(src);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<float> centerOperation(Mat_<float> src)
+{
+	Mat_<float> centered = Mat_<float>(src.rows, src.cols);
+	for(int row = 0; row < src.rows; row++)
+	{
+		for(int col = 0; col < src.cols; col++)
+		{
+			bool even = (row + col) % 2 == 0;
+			centered(row, col) = (even) ? src(row, col) : -src(row, col);
+		}
+	}
+
+	return centered;
+}
+
+
+Mat_<uchar> magnitudeLogOfCenteredFourierCore(Mat_<uchar> src)
+{
+	Mat_<float> srcf;
+	src.convertTo(srcf, CV_32FC1);
+
+	Mat_<float> centered = centerOperation(srcf);
+
+	Mat fourier;
+	dft(centered, fourier, DFT_COMPLEX_OUTPUT);
+
+	Mat channels[] = {
+		Mat::zeros(src.size(), CV_32F), Mat::zeros(src.size(), CV_32F)
+	};
+
+	split(fourier, channels);
+
+	Mat mag, phi;
+	magnitude(channels[0], channels[1], mag);
+
+	for(int row = 0; row < mag.rows; row++)
+	{
+		for(int col = 0; col < mag.cols; col++)
+		{
+			mag.at<float>(row, col) =
+				log(mag.at<float>(row, col) + 1);
+		}
+	}
+
+	Mat_<uchar> dst;
+	normalize(mag, dst, 0, 255, NORM_MINMAX, CV_8UC1);
+
+	return dst;
+}
+
+void magnitudeLogOfCenteredFourier()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+
+		Mat_<uchar> changed = magnitudeLogOfCenteredFourierCore(src);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> idealLowPassFilterCore(Mat_<uchar> src, float R)
+{
+	Mat_<float> srcf;
+	src.convertTo(srcf, CV_32FC1);
+
+	Mat_<float> centered = centerOperation(srcf);
+
+	Mat fourier;
+	dft(centered, fourier, DFT_COMPLEX_OUTPUT);
+
+	Mat channels[] = {
+		Mat::zeros(src.size(), CV_32FC1), Mat::zeros(src.size(), CV_32FC1)
+	};
+	split(fourier, channels);
+
+	Mat mag = channels[0];
+	Mat phi = channels[1];
+
+	for(int row = 0; row < mag.rows; row++)
+	{
+		for(int col = 0; col < mag.cols; col++)
+		{
+			float dist =
+				  pow((float)mag.rows / 2 - row, 2)
+				+ pow((float)mag.cols / 2 - col, 2);
+			if (dist > R * R)
+			{
+				mag.at<float>(row, col) = 0;
+				phi.at<float>(row, col) = 0;
+			}
+		}
+	}
+
+	channels[0] = mag;
+	channels[1] = phi;
+
+	Mat dstf;
+	merge(channels, 2, fourier);
+	dft(fourier, dstf, DFT_INVERSE | DFT_REAL_OUTPUT | DFT_SCALE);
+
+	Mat_<float> uncentered = centerOperation(dstf);
+
+	Mat_<uchar> dst;
+	normalize(uncentered, dst, 0, 255, NORM_MINMAX, CV_8UC1);
+
+	return dst;
+}
+
+void idealLowPassFilter()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		float R;
+
+		printf("enter R:\n");
+		scanf("%f", &R);
+
+		Mat_<uchar> changed = idealLowPassFilterCore(src, R);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> idealHighPassFilterCore(Mat_<uchar> src, float R)
+{
+	Mat_<float> srcf;
+	src.convertTo(srcf, CV_32FC1);
+
+	Mat_<float> centered = centerOperation(srcf);
+
+	Mat fourier;
+	dft(centered, fourier, DFT_COMPLEX_OUTPUT);
+
+	Mat channels[] = {
+		Mat::zeros(src.size(), CV_32FC1), Mat::zeros(src.size(), CV_32FC1)
+	};
+	split(fourier, channels);
+
+	Mat mag = channels[0];
+	Mat phi = channels[1];
+
+	for(int row = 0; row < mag.rows; row++)
+	{
+		for(int col = 0; col < mag.cols; col++)
+		{
+			float dist =
+				  pow((float)mag.rows / 2 - row, 2)
+				+ pow((float)mag.cols / 2 - col, 2);
+			if (dist < R * R)
+			{
+				mag.at<float>(row, col) = 0;
+				phi.at<float>(row, col) = 0;
+			}
+		}
+	}
+
+	channels[0] = mag;
+	channels[1] = phi;
+
+	Mat dstf;
+	merge(channels, 2, fourier);
+	dft(fourier, dstf, DFT_INVERSE | DFT_REAL_OUTPUT | DFT_SCALE);
+
+	Mat_<float> uncentered = centerOperation(dstf);
+
+	Mat_<uchar> dst;
+	normalize(uncentered, dst, 0, 255, NORM_MINMAX, CV_8UC1);
+
+	return dst;
+}
+
+void idealHighPassFilter()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		float R;
+
+		printf("enter R:\n");
+		scanf("%f", &R);
+
+		Mat_<uchar> changed = idealHighPassFilterCore(src, R);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> gaussianCutLPFCore(Mat_<uchar> src, float A)
+{
+	Mat_<float> srcf;
+	src.convertTo(srcf, CV_32FC1);
+
+	Mat_<float> centered = centerOperation(srcf);
+
+	Mat fourier;
+	dft(centered, fourier, DFT_COMPLEX_OUTPUT);
+
+	Mat channels[] = {
+		Mat::zeros(src.size(), CV_32FC1), Mat::zeros(src.size(), CV_32FC1)
+	};
+	split(fourier, channels);
+
+	Mat mag = channels[0];
+	Mat phi = channels[1];
+
+	for(int row = 0; row < mag.rows; row++)
+	{
+		for(int col = 0; col < mag.cols; col++)
+		{
+			float dist =
+				  pow((float)mag.rows / 2 - row, 2)
+				+ pow((float)mag.cols / 2 - col, 2);
+			float coeff = exp(- dist / pow(A, 2));
+			mag.at<float>(row, col) = mag.at<float>(row, col) * coeff;
+			phi.at<float>(row, col) = phi.at<float>(row, col) * coeff;
+		}
+	}
+
+	channels[0] = mag;
+	channels[1] = phi;
+
+	Mat dstf;
+	merge(channels, 2, fourier);
+	dft(fourier, dstf, DFT_INVERSE | DFT_REAL_OUTPUT | DFT_SCALE);
+
+	Mat_<float> uncentered = centerOperation(dstf);
+
+	Mat_<uchar> dst;
+	normalize(uncentered, dst, 0, 255, NORM_MINMAX, CV_8UC1);
+
+	return dst;
+}
+
+void gaussianCutLPF()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		float A;
+
+		printf("enter A:\n");
+		scanf("%f", &A);
+
+		Mat_<uchar> changed = gaussianCutLPFCore(src, A);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<uchar> gaussianCutHPFCore(Mat_<uchar> src, float A)
+{
+	Mat_<float> srcf;
+	src.convertTo(srcf, CV_32FC1);
+
+	Mat_<float> centered = centerOperation(srcf);
+
+	Mat fourier;
+	dft(centered, fourier, DFT_COMPLEX_OUTPUT);
+
+	Mat channels[] = {
+		Mat::zeros(src.size(), CV_32FC1), Mat::zeros(src.size(), CV_32FC1)
+	};
+	split(fourier, channels);
+
+	Mat mag = channels[0];
+	Mat phi = channels[1];
+
+	for(int row = 0; row < mag.rows; row++)
+	{
+		for(int col = 0; col < mag.cols; col++)
+		{
+			float dist =
+				  pow((float)mag.rows / 2 - row, 2)
+				+ pow((float)mag.cols / 2 - col, 2);
+			float coeff = exp(- dist / pow(A, 2));
+			mag.at<float>(row, col) = mag.at<float>(row, col) * (1 - coeff);
+			phi.at<float>(row, col) = phi.at<float>(row, col) * (1 - coeff);
+		}
+	}
+
+	channels[0] = mag;
+	channels[1] = phi;
+
+	Mat dstf;
+	merge(channels, 2, fourier);
+	dft(fourier, dstf, DFT_INVERSE | DFT_REAL_OUTPUT | DFT_SCALE);
+
+	Mat_<float> uncentered = centerOperation(dstf);
+
+	Mat_<uchar> dst;
+	normalize(uncentered, dst, 0, 255, NORM_MINMAX, CV_8UC1);
+
+	return dst;
+}
+
+void gaussianCutHPF()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		float A;
+
+		printf("enter A:\n");
+		scanf("%f", &A);
+
+		Mat_<uchar> changed = gaussianCutHPFCore(src, A);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
 int main()
 {
 	int op;
@@ -1399,6 +2255,23 @@ int main()
 		printf(" 18 - L7 - Closing\n");
 		printf(" 19 - L7 - Boundary extraction\n");
 		printf(" 20 - L7 - Region filling\n");
+		printf(" 21 - L8 - Show histogram\n");
+		printf(" 22 - L8 - Basic thresholding\n");
+		printf(" 23 - L8 - Histogram stretch shrink\n");
+		printf(" 24 - L8 - Brightness change\n");
+		printf(" 25 - L8 - gamma correction\n");
+		printf(" 26 - L8 - equalization of histogram\n");
+
+		printf(" 27 - L9 - Mean filter 3x3\n");
+		printf(" 28 - L9 - Mean filter 5x5\n");
+		printf(" 29 - L9 - Gaussian filter\n");
+		printf(" 30 - L9 - Laplace filter\n");
+		printf(" 31 - L9 - High-pass filter\n");
+		printf(" 32 - L9 - Magnitude log of the Fourier spectrum\n");
+		printf(" 33 - L9 - Ideal low-pass filter\n");
+		printf(" 34 - L9 - Idea high-pass filter\n");
+		printf(" 35 - L9 - Gaussian-cut LPF\n");
+		printf(" 36 - L9 - Gaussian-cut HPF\n");
 		printf(" 0 - Exit\n\n");
 		printf("Option: ");
 		scanf("%d",&op);
@@ -1464,6 +2337,54 @@ int main()
 				break;
 			case 20:
 				regionFilling();
+				break;
+			case 21:
+				showHist();
+				break;
+			case 22:
+				basicThresholding();
+				break;
+			case 23:
+				histogramStreachShirnk();
+				break;
+			case 24:
+				brightnessChange();
+				break;
+			case 25:
+				gammaCorrection();
+				break;
+			case 26:
+				histogramEqualization();
+				break;
+			case 27:
+				meanFilter3x3();
+				break;
+			case 28:
+				meanFilter5x5();
+				break;
+			case 29:
+				gaussianFilter();
+				break;
+			case 30:
+				laplaceFilter();
+				break;
+			case 31:
+				highPassFilter();
+				break;
+			case 32:
+				magnitudeLogOfCenteredFourier();
+				break;
+			case 33:
+				idealLowPassFilter();
+				break;
+			case 34:
+				idealHighPassFilter();
+				break;
+			case 35:
+				gaussianCutLPF();
+				break;
+			case 36:
+				gaussianCutHPF();
 				break;
 		}
 	}

@@ -6,13 +6,9 @@ using System.Threading.Tasks;
 
 namespace VirtualMemory
 {
-    class Address
+    public struct PageIndexOffset
     {
-        public Address(int offset)
-        {
-            Offset = offset;
-        }
-
-        public int Offset { get; }
+        public int Index;
+        public int Offset;
     }
 }

@@ -6,31 +6,9 @@ using System.Threading.Tasks;
 
 namespace VirtualMemory
 {
-    class Memory
+    interface IMemory
     {
-        private readonly IList<Page> _pages;
-
-        public byte ReadContent(Address address)
-        {
-            int pageIndex = address.Offset / Page.PageSize;
-            int pageOffset = address.Offset % Page.PageSize;
-            Address pageOffsetAddress = new Address(pageOffset);
-
-            return _pages[pageIndex].ReadContent(pageOffsetAddress);
-        }
-
-        public void WriteContent(Address address, byte toWrite)
-        {
-            int pageIndex = address.Offset / Page.PageSize;
-            int pageOffset = address.Offset % Page.PageSize;
-            Address pageOffsetAddress = new Address(pageOffset);
-
-            _pages[pageIndex].WriteContent(pageOffsetAddress, toWrite);
-        }
-
-        public Memory(int pageCount)
-        {
-            _pages = new Page[pageCount];
-        }
+        byte ReadContent(int address);
+        void WriteContent(int address, byte toWrite);
     }
 }

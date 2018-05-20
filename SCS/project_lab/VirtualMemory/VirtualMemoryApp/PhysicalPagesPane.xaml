@@ -1,0 +1,51 @@
+﻿<UserControl x:Class="VirtualMemoryApp.PhysicalPagesPane"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:VirtualMemoryApp"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800" d:DataContext="{d:DesignData VirtualMemoryViewModel}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="8*"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
+
+        <Label Grid.Row="0">Physical pages</Label>
+        <ListBox 
+            x:Name="PhysicalPageListBox" 
+            Grid.Row="1" 
+            ItemsSource="{Binding PhysicalPages, UpdateSourceTrigger=PropertyChanged}" 
+            AlternationCount="{Binding PhysicalPages.Count}"
+            SelectedItem="{Binding SelectedPhysicalPage, Mode=OneWayToSource}"
+            SelectedIndex="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border Name="border" BorderBrush="Black" BorderThickness="1"
+                            Width="Auto" Height="Auto">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+
+
+                            <Label Grid.Row="0" Grid.Column="0">Index:</Label>
+                            <Label Grid.Row="0" Grid.Column="1"
+                                Content="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=TemplatedParent.(ItemsControl.AlternationIndex)}" />
+                            <Label Grid.Row="1" Grid.Column="0">Mapped to frame:</Label>
+                            <Label Grid.Row="1" Grid.Column="1" Content="{Binding MappedTo}"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>
