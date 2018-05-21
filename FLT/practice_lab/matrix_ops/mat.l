@@ -3,9 +3,12 @@
 %}
 
 %%
-[A-Z] {yylval.ival = *yytext - 'A';
+[A-Z] { yylval.ival = *yytext - 'A';
         return VAR;}
-[0-9] { yylval.ival = atoi(yytext); }
+[0-9] { yylval.ival = atoi(yytext); 
+        return NUMB;}
+
+[=;\n*+-] { return *yytext; }
 
 [ \t] ;
 
