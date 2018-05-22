@@ -715,7 +715,7 @@ Point neighbour_8[] = {
 	Point(1, 0),
 	Point(1, -1),
 	Point(0, 1),
-	Point(0, 1),
+	Point(0, -1),
 	Point(-1, 1),
 	Point(-1, 0),
 	Point(-1, -1)
@@ -1728,12 +1728,12 @@ void histogramEqualization()
 	}
 }
 
-uchar calculateConvolutionPixel(Mat_<uchar> src, int row, int col, Mat_<int> kernel, int normalizer)
+float calculateConvolutionPixel_no_saturate(Mat_<uchar> src, int row, int col, Mat_<float> kernel, float normalizer)
 {
 	int kernelRowOffset = kernel.rows / 2;
 	int kernelColOffset = kernel.cols / 2;
 
-	int convolution = 0;
+	float convolution = 0;
 	for(int kernel_row = 0; kernel_row < kernel.rows ; kernel_row++)
 	{
 		for(int kernel_col = 0; kernel_col < kernel.cols; kernel_col++)
@@ -1745,12 +1745,19 @@ uchar calculateConvolutionPixel(Mat_<uchar> src, int row, int col, Mat_<int> ker
 		}
 	}
 
-	int normalized_conv = convolution / normalizer;
+	float normalized_conv = convolution / normalizer;
+
+	return normalized_conv;
+}
+
+uchar calculateConvolutionPixel(Mat_<uchar> src, int row, int col, Mat_<float> kernel, float normalizer)
+{
+	float normalized_conv = calculateConvolutionPixel_no_saturate(src, row, col, kernel, normalizer);
 
 	return saturate_cast<uchar>(normalized_conv);
 }
 
-Mat_<uchar> applyConvolution(Mat_<uchar> src, Mat_<int> kernel, int normalizer)
+Mat_<uchar> applyConvolution(Mat_<uchar> src, Mat_<float> kernel, float normalizer)
 {
 	Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
 
@@ -1762,6 +1769,24 @@ Mat_<uchar> applyConvolution(Mat_<uchar> src, Mat_<int> kernel, int normalizer)
 		for(int col = kernelColOffset; col < src.cols - kernelColOffset; col++)
 		{
 			dst(row, col) = calculateConvolutionPixel(src, row, col, kernel, normalizer);
+		}
+	}
+
+	return dst;
+}
+
+Mat_<float> applyConvolution_no_saturate(Mat_<uchar> src, Mat_<float> kernel, float normalizer)
+{
+	Mat_<float> dst = Mat_<float>(src.rows, src.cols, (float)0);
+
+	int kernelRowOffset = kernel.rows / 2;
+	int kernelColOffset = kernel.cols / 2;
+
+	for(int row = kernelRowOffset; row < src.rows - kernelRowOffset; row++)
+	{
+		for(int col = kernelColOffset; col < src.cols - kernelColOffset; col++)
+		{
+			dst(row, col) = calculateConvolutionPixel_no_saturate(src, row, col, kernel, normalizer);
 		}
 	}
 
@@ -2227,6 +2252,457 @@ void gaussianCutHPF()
 	}
 }
 
+uchar calculateMeanFilterPixel(const Mat_<uchar> src, int row, int col, int w)
+{
+	int w_half = w / 2;
+	std::vector<uchar> val;
+	for(int median_row = 0; median_row < w; median_row++)
+	{
+		for(int meadian_col = 0; meadian_col < w; meadian_col++)
+		{
+			int pixel_row = row + median_row - w_half;
+			int pixel_col = col + meadian_col - w_half;
+			uchar current_pixel = src(pixel_row, pixel_col);
+			val.push_back(current_pixel);
+		}
+	}
+
+	std::sort(val.begin(), val.end());
+	return val[(w * w) / 2];
+}
+
+Mat_<uchar> meanFilterSaltAndPepperCore(Mat_<uchar> src, int w)
+{
+	Mat_<uchar> dst = Mat_<uchar>(src.rows, src.cols, (uchar)0);
+
+	int w_half = w / 2;
+
+	for(int row = w_half; row < src.rows - w_half; row++)
+	{
+		for(int col = w_half; col < src.cols - w_half; col++)
+		{
+			dst(row, col) = calculateMeanFilterPixel(src, row, col, w);
+		}
+	}
+
+	return dst;
+}
+
+void meanFilterSaltAndPepper()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		int w;
+
+		printf("enter w:\n");
+		scanf("%d", &w);
+
+		Mat_<uchar> changed = meanFilterSaltAndPepperCore(src, w);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<float> createGaussianKernel(int w, float sig)
+{
+	int half_w = w / 2;;
+	Mat_<float> kernel = Mat_<float>(w, w);
+
+	for(int row = 0; row < w; row++)
+	{
+		for(int col = 0; col < w; col++)
+		{
+			float power = -(pow(row - half_w, 2) + pow(col - half_w, 2));
+			power /= 2 * pow(sig, 2);
+			kernel(row, col) = exp(power);
+			kernel(row, col) /= 2 * PI * pow(sig, 2);
+		}
+	}
+
+	return kernel;
+}
+
+Mat_<uchar> gaussianFilter1x2DCore(Mat_<uchar> src, float sig)
+{
+	int w = round(6 * sig);
+
+	// if w is even add one (to make it odd)
+	w = (w % 2 == 0) ? w + 1 : w;
+
+	Mat_<float> kernel = createGaussianKernel(w, sig);
+
+	float sum_kernel = sum(kernel)[0];
+
+	Mat_<uchar> dst = applyConvolution(src, kernel, sum_kernel);
+
+	return dst;
+}
+
+void gaussianFilter1x2D()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		float sig;
+
+		printf("enter sig:\n");
+		scanf("%f", &sig);
+
+		double t = (double)getTickCount();
+		Mat_<uchar> changed = gaussianFilter1x2DCore(src, sig);
+		t = ((double)getTickCount() - t) / getTickFrequency();
+		printf("Time = %.3f [ms]\n", t * 1000);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+Mat_<float> createGaussianKernelX(int w, float sig)
+{
+	int half_w = w / 2;;
+	Mat_<float> kernel = Mat_<float>(w, 1);
+
+	for(int row = 0; row < w; row++)
+	{
+			float power = -(pow(row - half_w, 2));
+			power /= 2 * pow(sig, 2);
+			kernel(row, 0) = exp(power);
+			kernel(row, 0) /= sqrt(2 * PI) * sig;
+	}
+
+	return kernel;
+}
+
+Mat_<float> createGaussianKernelY(int w, float sig)
+{
+	int half_w = w / 2;;
+	Mat_<float> kernel = Mat_<float>(1, w);
+
+	for(int col = 0; col < w; col++)
+	{
+			float power = -(pow(col - half_w, 2));
+			power /= 2 * pow(sig, 2);
+			kernel(0, col) = exp(power);
+			kernel(0, col) /= sqrt(2 * PI) * sig;
+	}
+
+	return kernel;
+}
+
+Mat_<uchar> gaussianFilter2x1DCore(Mat_<uchar> src, float sig)
+{
+	int w = round(6 * sig);
+
+	// if w is even add one (to make it odd)
+	w = (w % 2 == 0) ? w + 1 : w;
+
+	Mat_<float> kernelx = createGaussianKernelX(w, sig);
+
+	float sum_kernel = sum(kernelx)[0];
+
+	Mat_<uchar> inter = applyConvolution(src, kernelx, sum_kernel);
+
+	Mat_<float> kernely = createGaussianKernelY(w, sig);
+
+	sum_kernel = sum(kernely)[0];
+
+	Mat_<uchar> dst = applyConvolution(inter, kernely, sum_kernel);
+
+	return dst;
+}
+
+void gaussianFilter2x1D()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		float sig;
+
+		printf("enter sig:\n");
+		scanf("%f", &sig);
+
+		double t = (double)getTickCount();
+		Mat_<uchar> changed = gaussianFilter2x1DCore(src, sig);
+		t = ((double)getTickCount() - t) / getTickFrequency();
+		printf("Time = %.3f [ms]\n", t * 1000);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
+int getArea(float phase)
+{
+	if (phase > PI)
+	{
+		phase -= 2 * PI;
+	}
+	if (phase < PI/8 && phase > -PI/8)
+	{
+		return 2;
+	}
+
+	if (phase > 7*PI/8 || phase < -7*PI/8)
+	{
+		return 2;
+	}
+
+	if (phase < 3*PI/8 && phase > PI/8)
+	{
+		return 1;
+	}
+
+	if (phase < -5*PI/8 && phase > -7*PI/8)
+	{
+		return 1;
+	}
+
+	if (phase < 5*PI/8 && phase > 3*PI/8)
+	{
+		return 0;
+	}
+
+	if (phase < -3*PI/8 && phase > -5*PI/8)
+	{
+		return 0;
+	}
+
+	if (phase < 7*PI/8 && phase > 5*PI/8)
+	{
+		return 3;
+	}
+
+	if (phase < -1*PI/8 && phase > -3*PI/8)
+	{
+		return 3;
+	}
+
+	return 0;
+}
+
+float calculateNonMaximaPixel(const Mat_<float>& magnitudes, int row, int col, int area)
+{
+	float current = magnitudes(row, col);
+	float left = 0;
+	float right = 0;
+	switch(area)
+	{
+		case 0:
+			left = magnitudes(row - 1, col);
+			right = magnitudes(row + 1, col);
+			break;
+		case 1:
+			left = magnitudes(row + 1, col - 1);
+			right = magnitudes(row - 1, col + 1);
+			break;
+		case 2:
+			left = magnitudes(row, col - 1);
+			right = magnitudes(row, col + 1);
+			break;
+		case 3:
+			left = magnitudes(row - 1, col - 1);
+			right = magnitudes(row + 1, col + 1);
+			break;
+		default:
+			exit(0);
+	}
+
+	if (current < left || current < right)
+	{
+		return 0;
+	}
+
+	return current;
+}
+
+Mat_<float> nonMaximaSuppression(Mat_<float> magnitudes, Mat_<float> phases)
+{
+	Mat_<float> nonMaxima = Mat_<float>(magnitudes.rows, magnitudes.cols, (float)0);
+
+	for(int row = 1; row < magnitudes.rows - 1; row++)
+	{
+		for(int col = 1; col < magnitudes.cols - 1; col++)
+		{
+			float phase = phases(row, col);
+			int area = getArea(phase);
+			nonMaxima(row, col) = calculateNonMaximaPixel(magnitudes, row, col, area);
+		}
+	}
+
+	return nonMaxima;
+}
+
+Mat_<uchar> doWeakEdgeLinking(Mat_<uchar> src)
+{
+
+	Mat_<uchar> img = src.clone();
+
+	for(int i = 0; i < img.rows; i++)
+	{
+		for(int j = 0; j < img.cols; j++)
+		{
+			if (img(i, j) == 255)
+			{
+				std::queue<Point> q = std::queue<Point>();
+				q.push(Point(j, i));
+				while(!q.empty())
+				{
+					Point p = q.front();
+					q.pop();
+					for (Point d : neighbour_8)
+					{
+						int n_i = p.y + d.y;
+						int n_j = p.x + d.x;
+						if (n_i < 0 || n_i >= img.rows)
+						{
+							continue;
+						}
+						if (n_j < 0 || n_j >= img.cols)
+						{
+							continue;
+						}
+						if (img(n_i, n_j) == 128)
+						{
+							img(n_i, n_j) = 255;
+							q.push(Point(n_j, n_i));
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < img.rows; i++)
+	{
+		for (int j = 0; j < img.cols; j++)
+		{
+			if (img(i, j) != 255)
+			{
+				img(i, j) = 0;
+			}
+		}
+	}
+
+	return img;
+}
+
+Mat_<uchar> cannyEdgeDetectionCore(Mat_<uchar> src, double p = 0.1, double k = 0.4)
+{
+	Mat_<uchar> gaussian = gaussianFilter1x2DCore(src, 0.8);
+
+	Mat_<float> kernel_x = Mat_<float>(3, 3);
+	kernel_x(0, 0) = kernel_x(2, 0) = -1;
+	kernel_x(1, 0) = -2;
+
+	kernel_x(0, 1) = kernel_x(1, 1) = kernel_x(2, 1) = 0;
+
+	kernel_x(0, 2) = kernel_x(2, 2) = 1;
+	kernel_x(1, 2) = 2;
+
+	Mat_<float> GX = applyConvolution_no_saturate(gaussian, kernel_x, 1);
+
+	Mat_<float> kernel_y = Mat_<float>(3, 3);
+	kernel_y(0, 0) = kernel_y(0, 2) = 1;
+	kernel_y(0, 1) = 2;
+
+	kernel_y(1, 0) = kernel_y(1, 1) = kernel_y(1, 2) = 0;
+
+	kernel_y(2, 0) = kernel_y(2, 2) = -1;
+	kernel_y(2, 1) = -2;
+
+	Mat_<float> GY = applyConvolution_no_saturate(gaussian, kernel_y, 1);
+
+	//magnitude
+	Mat_<float> magnitudes;
+	magnitude(GX, GY, magnitudes);
+
+	//phase
+	Mat_<float> phases;
+	phase(GX, GY, phases);
+
+	// normalize
+	Mat_<float> normalized_mag;
+	normalize(magnitudes, normalized_mag, 0, 255, NORM_MINMAX, CV_32FC1);
+
+	Mat_<float> suppressed = nonMaximaSuppression(normalized_mag, phases);
+
+	Mat_<uchar> converted;
+	suppressed.convertTo(converted, CV_8UC1);
+
+	int* hist = calculateHistogram(converted);
+
+	int noEdgePixels = (int)(p * (src.rows * src.cols - hist[0]));
+
+	int sum = 0;
+	int highThreshold = 0;
+	for (int i = 255; i >= 0; i--)
+	{
+		sum += hist[i];
+
+		if (sum > noEdgePixels)
+		{
+			highThreshold = i;
+			break;
+		}
+	}
+
+	printf("high threshold: %d", highThreshold);
+
+	int lowThreshold = k * highThreshold;
+
+	Mat_<uchar> strongThreshold = converted.clone();
+
+	for(int row = 0; row < src.rows; row++)
+	{
+		for(int col = 0; col < src.cols; col++)
+		{
+			uchar pixel = converted(row, col);
+			if (pixel > highThreshold)
+			{
+				strongThreshold(row, col) = 255;
+			}else if (pixel < lowThreshold)
+			{
+				strongThreshold(row, col) = 0;
+			}else
+			{
+				strongThreshold(row, col) = 128;
+			}
+		}
+	}
+
+
+	Mat_<uchar> connectedComp = doWeakEdgeLinking(strongThreshold);
+
+	return connectedComp;
+}
+
+void cannyEdgeDetection()
+{
+	char fname[MAX_PATH];
+	while(openFileDlg(fname))
+	{
+		Mat_<uchar> src = imread(fname, IMREAD_GRAYSCALE);
+		Mat_<uchar> changed = cannyEdgeDetectionCore(src);
+
+		imshow("original ", src);
+		imshow("changed", changed);
+	
+		waitKey();
+	}
+}
+
 int main()
 {
 	int op;
@@ -2272,6 +2748,13 @@ int main()
 		printf(" 34 - L9 - Idea high-pass filter\n");
 		printf(" 35 - L9 - Gaussian-cut LPF\n");
 		printf(" 36 - L9 - Gaussian-cut HPF\n");
+
+		printf(" 37 - L10 - Median filter (w - variable)\n");
+		printf(" 38 - L10 - Gaussian filter (1x2D - sig-variable)\n");
+		printf(" 39 - L10 - Gaussian filter (2x1D - sig-variable)\n");
+
+		printf(" 40 - L11 - Canny edge detection\n");
+
 		printf(" 0 - Exit\n\n");
 		printf("Option: ");
 		scanf("%d",&op);
@@ -2385,6 +2868,23 @@ int main()
 				break;
 			case 36:
 				gaussianCutHPF();
+				break;
+			case 37:
+				meanFilterSaltAndPepper();
+				break;
+			case 38:
+				gaussianFilter1x2D();
+				break;
+			case 39:
+				gaussianFilter2x1D();
+				break;
+			case 40:
+				// gaussian filtering
+				// gradient magnitude & orientation
+				// Non-Maxima suppression
+
+				// Adaptive thresholding + edge linking
+				cannyEdgeDetection();
 				break;
 		}
 	}
