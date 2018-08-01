@@ -1,0 +1,8 @@
+# compile vhdl design source files
+vhdl xil_defaultlib  \
+"../../../../lab_10_memories.srcs/sources_1/new/memory64kx16bit.vhd" \
+"../../../../lab_10_memories.srcs/sources_1/new/memory64kx8bit.vhd" \
+"../../../../lab_10_memories.srcs/sources_1/new/memory512kx16bit.vhd" \
+
+# Do not sort compile order
+nosort

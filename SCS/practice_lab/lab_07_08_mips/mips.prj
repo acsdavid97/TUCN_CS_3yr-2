@@ -1,2 +1,7 @@
 vhdl work "mips_package.vhd"
+vhdl work "regfile.vhd"
+vhdl work "program_counter.vhd"
+vhdl work "ir.vhd"
+vhdl work "control_unit.vhd"
+vhdl work "ALU.vhd"
 vhdl work "mips.vhd"

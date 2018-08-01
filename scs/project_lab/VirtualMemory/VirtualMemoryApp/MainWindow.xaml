@@ -7,7 +7,8 @@
         xmlns:local="clr-namespace:VirtualMemoryApp"
         x:Class="VirtualMemoryApp.MainWindow"
         mc:Ignorable="d"
-        Title="MainWindow" Height="650" Width="850">
+        Title="MainWindow" Height="650" Width="850" 
+        d:DataContext="{local:VirtualMemoryViewModel}">
     <Grid x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="1*"/>
@@ -18,33 +19,47 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="1*"/>
             </Grid.ColumnDefinitions>
+            
+            <local:ControlPane Grid.Column="0"/>
+            
+            <local:PhysicalPagesPane Grid.Column="1"></local:PhysicalPagesPane>
 
-            <ListBox x:Name="PhysicalPageListBox" Grid.Column="0" ItemsSource="{Binding PhysicalPages}" SelectedItem="{Binding SelectedPhysicalPage}">
-                <ListBox.DataContext>
-                    <local:VirtualMemoryViewModel/>
-                </ListBox.DataContext>
-            </ListBox>
-            <ListBox x:Name="SwapPageListBox" Grid.Column="1" ItemsSource="{Binding SwapPages}" SelectedItem="{Binding SelectedSwapPage}">
-                <ListBox.DataContext>
-                    <local:VirtualMemoryViewModel/>
-                </ListBox.DataContext>
-            </ListBox>
+            <local:SwapPagesPane Grid.Column="2"></local:SwapPagesPane>
         </Grid>
 
-        <control:HexEditor
-            DataContext="local:VirtualMemoryViewModel"
-            x:Name="HexEdit"
-            ReadOnlyMode="False"
-            Width="Auto"
-            Height="Auto"
-            Grid.Row="1"
-            Stream="{Binding Path=HexViewStream}">
-            <d:HexEditor.DataContext>
-                <local:VirtualMemoryViewModel />
-            </d:HexEditor.DataContext>
-        </control:HexEditor>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
+            
+            <ListBox ItemsSource="{Binding MmuLogs}" Grid.Column="0">
+            </ListBox>
+
+            <control:HexEditor
+                x:Name="PhysicalHexEdit"
+                ReadOnlyMode="True"
+                Width="Auto"
+                Height="Auto"
+                Grid.Column="1"
+                Stream="{Binding PhysicalHexViewStream}">
+            </control:HexEditor>
+
+            <control:HexEditor
+                x:Name="SwapHexEdit"
+                ReadOnlyMode="True"
+                Width="Auto"
+                Height="Auto"
+                Grid.Column="2"
+                Stream="{Binding SwapHexViewStream}">
+            </control:HexEditor>
+        </Grid>
     </Grid>
+    
+
 
 </Window>
 

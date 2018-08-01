@@ -1,0 +1,12 @@
+
+{ 
+    crc :  2015349206833222344  , 
+    ccp_crc :  0  , 
+    cmdline : " -wto 98a5629af3794720b3b51c82fa817696 --incr --debug typical --relax --mt 2 -L xil_defaultlib -L secureip --snapshot memory512kx16bit_behav xil_defaultlib.memory512kx16bit" , 
+    buildDate : "Dec 15 2017" , 
+    buildTime : "21:07:18" , 
+    linkCmd : "D:\\programs\\Xilinx\\Vivado\\2017.4\\data\\..\\tps\\mingw\\6.2.0\\win64.o\\nt\\bin\\gcc.exe -Wa,-W  -O -Wl,--stack,104857600 -o \"xsim.dir/memory512kx16bit_behav/xsimk.exe\"   \"xsim.dir/memory512kx16bit_behav/obj/xsim_0.win64.obj\" \"xsim.dir/memory512kx16bit_behav/obj/xsim_1.win64.obj\" \"D:\\programs\\Xilinx\\Vivado\\2017.4\\lib\\win64.o\\\\librdi_simulator_kernel.dll\" \"D:\\programs\\Xilinx\\Vivado\\2017.4\\lib\\win64.o\\\\librdi_simbridge_kernel.dll\"" , 
+    aggregate_nets : 
+    [ 
+    ] 
+} 

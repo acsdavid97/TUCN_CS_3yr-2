@@ -1,0 +1,13 @@
+0.6
+2017.4
+Dec 15 2017
+21:07:18
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/ALU.vhd,1524480458,vhdl,,,,alu,,,,,,,,
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/control_unit.vhd,1526305729,vhdl,,,,control_unit,,,,,,,,
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/ir.vhd,1524480560,vhdl,,,,instreg,,,,,,,,
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/mips.vhd,1526306622,vhdl,,,,mips,,,,,,,,
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/mips_package.vhd,1526294614,vhdl,D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/mips.vhd;D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/ram.vhd,,,mips_package,,,,,,,,
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/program_counter.vhd,1524480564,vhdl,,,,pc,,,,,,,,
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/ram.vhd,1526306754,vhdl,,,,rams_no_change,,,,,,,,
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/imports/lab_07_08_mips/regfile.vhd,1525692894,vhdl,,,,regfile,,,,,,,,
+D:/git/TUCN_CS_3yr-2/SCS/practice_lab/mips_new/mips_new.srcs/sources_1/new/alu_control_unit.vhd,1526305520,vhdl,,,,alu_control_unit,,,,,,,,

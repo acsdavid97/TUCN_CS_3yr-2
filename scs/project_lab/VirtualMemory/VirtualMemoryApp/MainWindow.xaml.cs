@@ -26,6 +26,10 @@ namespace VirtualMemoryApp
         public MainWindow()
         {
             InitializeComponent();
+            var datacontext = new VirtualMemoryViewModel();
+            this.DataContext = datacontext;
+            this.PhysicalHexEdit.DataContext = datacontext;
+            this.SwapHexEdit.DataContext = datacontext;
         }
     }
 }
